@@ -1,0 +1,17 @@
+﻿@model WebAdvert.Web.Models.Home.IndexViewModel
+
+<div class="card m-3" style="min-width: 18rem; max-width:30.5%">
+    <a href="@Model.Id" class="boxClick" data-id="@Model.Id">
+        @{ 
+            var defaultImageUrl = "https://camblycontent.files.wordpress.com/2017/02/advertising-word-block.jpg";
+            var imageUrl = string.IsNullOrEmpty(Model.Image) ? defaultImageUrl :
+                $"http://d3pcsol62g4bxb.cloudfront.net/{Model.Image}";
+            //var imageUrl = defaultImageUrl;
+        }
+
+        <img src="@imageUrl" alt="Avatar" style="width:100%" class="card-img-top imageThumbnail"/>
+        <div class="container">
+            <p>@Model.Title</p>
+        </div>
+    </a>
+</div>

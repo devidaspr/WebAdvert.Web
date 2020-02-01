@@ -1,12 +1,19 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
+using System.Net.Http;
 using System.Threading.Tasks;
+using AutoMapper;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Polly;
+using Polly.Extensions.Http;
+using WebAdvert.Web.ServiceClients;
+using WebAdvert.Web.Services;
 
 namespace WebAdvert.Web
 {
@@ -23,6 +30,8 @@ namespace WebAdvert.Web
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddControllersWithViews();
+
+            services.AddAutoMapper(typeof(Startup));
 
             services.AddCognitoIdentity(
                 config =>
@@ -43,6 +52,29 @@ namespace WebAdvert.Web
             {
                 options.LoginPath = "/Accounts/Login";
             });
+
+            services.AddTransient<IFileUploader, S3FileUploader>();
+            services.AddHttpClient<IAdvertApiClient, AdvertApiClient>()
+                    .AddPolicyHandler(GetRetryPolicy)
+                    .AddPolicyHandler(GetCircuitBreakerPatternPolicy);
+            services.AddHttpClient<ISearchApiClient, SearchApiClient>()
+                    .AddPolicyHandler(GetRetryPolicy)
+                    .AddPolicyHandler(GetCircuitBreakerPatternPolicy);
+        }
+
+        private IAsyncPolicy<HttpResponseMessage> GetCircuitBreakerPatternPolicy(HttpRequestMessage arg)
+        {
+            //Circuit breaket pattern to cut-off retrying to connect to a service after a given number of attempts
+            //after 
+            return HttpPolicyExtensions.HandleTransientHttpError().CircuitBreakerAsync(3, TimeSpan.FromSeconds(30));
+        }
+
+        private IAsyncPolicy<HttpResponseMessage> GetRetryPolicy(HttpRequestMessage arg)
+        {
+            //Back-off pattern to retry connecting a service after a given amount of time in case of an error/error message
+            return HttpPolicyExtensions.HandleTransientHttpError()
+                        .OrResult(msg => msg.StatusCode == HttpStatusCode.NotFound)
+                        .WaitAndRetryAsync(5, retryAttempts => TimeSpan.FromSeconds(Math.Pow(2, retryAttempts)));
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -58,11 +90,11 @@ namespace WebAdvert.Web
             }
             app.UseStaticFiles();
 
+            app.UseAuthentication();
             app.UseRouting();
-
+            //app.UseCookiePolicy();
             app.UseAuthorization();
 
-            app.UseAuthentication();
 
             app.UseEndpoints(endpoints =>
             {

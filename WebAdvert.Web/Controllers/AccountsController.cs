@@ -12,13 +12,13 @@ using WebAdvert.Web.Models.Accounts;
 
 namespace WebAdvert.Web.Controllers
 {
-    public class Accounts : Controller
+    public class AccountsController : Controller
     {
         private readonly SignInManager<CognitoUser> _signInManager;
         private readonly UserManager<CognitoUser> _userManager;
         private readonly CognitoUserPool _pool;
 
-        public Accounts(SignInManager<CognitoUser> signInManager, UserManager<CognitoUser> userManager,
+        public AccountsController(SignInManager<CognitoUser> signInManager, UserManager<CognitoUser> userManager,
                         CognitoUserPool pool)
         {
             this._signInManager = signInManager;
@@ -26,7 +26,7 @@ namespace WebAdvert.Web.Controllers
             this._pool = pool; 
         }
 
-        public async Task<IActionResult> Signup()
+        public IActionResult Signup()
         {
             return View();
         }
@@ -116,6 +116,7 @@ namespace WebAdvert.Web.Controllers
 
                 if (result.Succeeded)
                 {
+                    //var test = User.Identity.IsAuthenticated;
                     return RedirectToAction("Index", "Home");
                 }
                 else
@@ -124,6 +125,14 @@ namespace WebAdvert.Web.Controllers
                 }
             }
             return View(model);
+        }
+
+        public async Task<IActionResult> Signout()
+        {
+            if (User.Identity.IsAuthenticated)
+                await _signInManager.SignOutAsync();
+
+            return RedirectToAction("Login");
         }
 
     }
